@@ -1,0 +1,8 @@
+
+envs_dirs:
+  - /data/docker/conda_containers/envs
+  - /opt/conda/envs
+
+pkgs_dirs:
+  - /data/docker/conda_containers/pkgs
+  - /opt/conda/pkgs

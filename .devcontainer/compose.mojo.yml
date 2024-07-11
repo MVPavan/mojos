@@ -1,0 +1,42 @@
+## To build and run the image run:
+## docker compose up -d
+
+version: "3.8"
+services:
+  mojo:
+    build:
+      context: ./
+      dockerfile: Dockerfile.mojosdk
+    image: mojo
+    container_name: ${CONTAINER_NAME}
+    network_mode: host
+    ipc: host
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - type: bind
+        source: ${CODE}
+        target: ${CODE}
+      - type: bind
+        source: ${CONDA}
+        target: ${CONDA}
+
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      stack:
+        soft: 67108864
+        hard: 67108864
+    security_opt:
+      - apparmor:unconfined
+    
+    stdin_open: true 
+    tty: true
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
