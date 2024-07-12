@@ -4,8 +4,14 @@ Collection of mojo codes
 
 
 ## mandlebrot
+[Mbot Part1](https://www.modular.com/blog/how-mojo-gets-a-35-000x-speedup-over-python-part-1)
 
-### params
+[Mbot Part2](https://www.modular.com/blog/how-mojo-gets-a-35-000x-speedup-over-python-part-2)
+
+[Mbot Part3](https://www.modular.com/blog/mojo-a-journey-to-68-000x-speedup-over-python-part-3)
+
+
+### Params
 ```
 xmin, xmax, ymin, ymax = -2.0, 0.6, -1.5, 1.5
 width, height = 960, 960
