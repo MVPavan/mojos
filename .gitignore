@@ -1,1 +1,6 @@
 **/repos
+*.png
+*.jpg
+*.out
+*.npy
+**/output
