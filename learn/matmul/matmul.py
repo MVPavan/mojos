@@ -42,16 +42,27 @@ def benchmark_matmul_numpy(M, N, K):
     B = np.random.rand(N, K)
     # dt = timeit(lambda: np.matmul(A,B), number=2)/2
 
-    counter = int(2*1e4)
-    dt = 0
-    for _ in range(counter):
-        t1 = perf_counter_ns()
-        np.matmul(A,B)
-        t2 = perf_counter_ns()
-        dt += (t2-t1)
+    # counter = int(2*1e4)
+    # dt = 0
+    # for _ in range(counter):
+    #     t1 = perf_counter_ns()
+    #     C = np.matmul(A,B)
+    #     t2 = perf_counter_ns()
+    #     dt += (t2-t1)
     
-    print(dt/1e9)
-    dt = (dt/counter)/1e9
+    # print(dt/1e9)
+    # dt = (dt/counter)/1e9
+
+    # gflops = (2*M*N*K)/ 1e9
+    # gflops_per_sec = (gflops/dt)
+    # print(gflops, "GFLOPS")
+    # print(dt, "s")
+    # print(gflops_per_sec, "GFLOP/s")
+
+    A = A.astype(np.float32)
+    B = B.astype(np.float32)
+    counter = int(1e4)
+    dt = timeit(lambda: np.matmul(A,B), number=counter) / counter
 
     gflops = (2*M*N*K)/ 1e9
     gflops_per_sec = (gflops/dt)
@@ -63,3 +74,4 @@ def benchmark_matmul_numpy(M, N, K):
 if __name__ == "__main__":
     # benchmark_matmul_python(512, 256, 512)
     benchmark_matmul_numpy(512, 256, 512)
+    # benchmark_matmul_numpy(2048, 1024, 2048)
