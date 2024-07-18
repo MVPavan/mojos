@@ -29,12 +29,15 @@ def benchmark_matmul_python(M, N, K):
     # print(A.value,B.value,C.value)
     # matmul_python(C, A, B)
     # print(C.value)
-    dt = timeit(lambda: matmul_python(C, A, B), number=2)/2
+    counter = 2
+    dt = timeit(lambda: matmul_python(C, A, B), number=counter)/counter
     gflops = (2*M*N*K)/ 1e9
     gflops_per_sec = (gflops/dt)
-    print(gflops, "GFLOPS")
-    print(dt, "s")
-    print(gflops_per_sec, "GFLOP/s")
+    print(f"Matmul : {M}x{N} @ {N}x{K}")
+    print("Iterations : ", counter)
+    print("Total GFLOPS : ",gflops)
+    print("Total time in sec : ", dt)
+    print("GFLOP/sec : ",gflops_per_sec)
     return gflops
 
 def benchmark_matmul_numpy(M, N, K):
@@ -61,17 +64,22 @@ def benchmark_matmul_numpy(M, N, K):
 
     A = A.astype(np.float32)
     B = B.astype(np.float32)
-    counter = int(1e4)
+    counter = int(1e3)
     dt = timeit(lambda: np.matmul(A,B), number=counter) / counter
 
     gflops = (2*M*N*K)/ 1e9
     gflops_per_sec = (gflops/dt)
-    print(gflops, "GFLOPS")
-    print(dt, "s")
-    print(gflops_per_sec, "GFLOP/s")
+    print(f"Matmul : {M}x{N} @ {N}x{K}")
+    print("Total Iterations : ", counter)
+    print("Total GFLOPS : ",gflops)
+    print("Total time in sec : ", dt)
+    print("GFLOP/sec : ",gflops_per_sec)
+    print("speedup over python: ", 77.04722635447979/dt)
     return gflops
 
 if __name__ == "__main__":
     # benchmark_matmul_python(512, 256, 512)
+    # benchmark_matmul_python(2048, 1024, 2048)
+
     benchmark_matmul_numpy(512, 256, 512)
     # benchmark_matmul_numpy(2048, 1024, 2048)
