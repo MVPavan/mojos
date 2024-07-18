@@ -1,4 +1,40 @@
 # Resize
+
+**Table of Contents**
+- [Resize](#resize)
+	- [CPU](#cpu)
+	- [Bilinear](#bilinear)
+		- [1. Python](#1-python)
+		- [2. Mojo](#2-mojo)
+			- [Error](#error)
+			- [Latency](#latency)
+
+
+## CPU
+
+- Physical cores: 20
+- Physical + Logical cores: 40
+```
+Architecture:                    x86_64
+CPU op-mode(s):                  32-bit, 64-bit
+Byte Order:                      Little Endian
+Address sizes:                   46 bits physical, 48 bits virtual
+CPU(s):                          40
+On-line CPU(s) list:             0-39
+Thread(s) per core:              2
+Core(s) per socket:              10
+Socket(s):                       2
+NUMA node(s):                    2
+Vendor ID:                       GenuineIntel
+CPU family:                      6
+Model:                           85
+Model name:                      Intel(R) Xeon(R) Silver 4210R CPU @ 2.40GHz
+Stepping:                        7
+CPU MHz:                         2400.000
+CPU max MHz:                     3200.0000
+CPU min MHz:                     1000.0000
+```
+
 ## Bilinear
 
 ### 1. Python
@@ -17,7 +53,7 @@ Python: 10.476222490519286 s
 cv2 resize is 21883.248995744227 times faster than python
 ```
 
-### 2. **Mojo**
+### 2. Mojo
 #### Error
 Mojo numpy Error checking:
 ```
