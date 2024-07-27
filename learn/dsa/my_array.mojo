@@ -20,35 +20,73 @@ struct MyArray[T:CollectionElement]:
     var size:Int
     var capacity:Int
 
-    fn __init__(inout self):
+    fn __init__(inout self,):
         self.data = UnsafePointer[T]()
         self.size = 0
         self.capacity = 0
 
-    fn __init__(inout self, capacity:Int=10):
+    fn __init__(inout self, *, capacity:Int):
         self.data = UnsafePointer[T].alloc(capacity)
         self.size = 0
         self.capacity = capacity
+    
+    fn __init__(inout self, *values: T):
+        self = Self(capacity = len(values))
+        for i in range(self.capacity):
+            self.append(values[i])
+    
+    @always_inline
+    fn __del__(owned self):
+        for i in range(self.size):
+            destroy_pointee(self.data + i)
+        if self.data:
+            self.data.free()
+
+    @always_inline
+    fn normalized_index(self, index:Int) -> Int:
+        var _index = index
+        if _index < 0:
+            _index = self.size+index
+        debug_assert(0<= _index < self.size, "Index out of range")
+        return _index
+
+
+    fn __getitem__(self, index:Int) -> T:
+        var _index = self.normalized_index(index)
+        return self.data.offset(_index)[]
+    
+    fn __setitem__(self, index:Int, owned value:T):
+        var _index = self.normalized_index(index)
+        destroy_pointee(self.pointer_at(_index))
+        initialize_pointee_move(self.pointer_at(_index), value^)
+
+
+    fn __copyinit__(inout self, existing: Self):
+        self = Self(capacity=existing.capacity)
+        for i in range(existing.size):
+            self.append(existing[i])
 
     fn __moveinit__(inout self, owned existing: Self):
-        """Move data of an existing list into a new one.
-
-        Args:
-            existing: The existing list.
-        """
         self.data = existing.data
         self.size = existing.size
         self.capacity = existing.capacity
 
-    # fn __copyinit__(inout self, existing: Self):
-    #     """Creates a deepcopy of the given list.
-
-    #     Args:
-    #         existing: The list to copy.
-    #     """
-    #     self = Self(capacity=existing.capacity)
-    #     for i in range(len(existing)):
-    #         self.append(existing[i])
+    fn __len__(self) -> Int:
+        return self.size
+    
+    fn __str__[U: RepresentableCollectionElement](self: MyArray[U]) -> String:
+        var result:String = "[ "
+        for i in range(self.size):
+            result += repr(self[i]) + ", "
+        result += "]"
+        return result
+    
+    fn __repr__[U: RepresentableCollectionElement](self:MyArray[U])->String:
+        return self.__str__()
+    
+    @always_inline
+    fn pointer_at(self, offset:Int)->UnsafePointer[T]:
+        return self.data.offset(offset)
     
     fn _realloc(inout self, new_capcity:Int):
         var new_data = UnsafePointer[T].alloc(new_capcity)
@@ -68,20 +106,68 @@ struct MyArray[T:CollectionElement]:
         initialize_pointee_move(self.data+self.size, value^)
         self.size +=1
     
-    @always_inline
     fn insert(inout self, index:Int, owned value:T):
-        self.append(value)
-        # TODO: check the self.data offset range (0->size-1) or (1->size)
-        var left_ptr = self.data.offset(self.size-2)
-        var right_ptr = self.data.offset(self.size-1)
+        var _index = self.normalized_index(index)
         
-        var temp = move_from_pointee(right_ptr)
+        var temp = move_from_pointee(self.pointer_at(self.size-1))
 
-        for i in range(index, self.size-1):
-            move_pointee(src=self.data.offset(self.size-2-i), dst=self.data.offset(self.size-1-i))
+        for i in reversed(range(_index, self.size-1)):
+            move_pointee(src=self.pointer_at(i), dst=self.pointer_at(i+1))
         
-        initialize_pointee_move(self.data.offset(index), value^)
+        initialize_pointee_move(self.pointer_at(index), value^)
+        self.append(temp^)
 
 
+from testing import assert_true, assert_equal
+# Test Initialization
+fn test_myarray_initialization() raises:
+    var arr = MyArray[Int]()
+    assert_true(arr.size == 0)
+    assert_true(arr.capacity == 0)
 
+    var arr_with_capacity = MyArray[Int](capacity=5)
+    assert_true(arr_with_capacity.size == 0)
+    assert_true(arr_with_capacity.capacity == 5)
 
+    var arr_with_values = MyArray[Int](1, 2, 3)
+    assert_true(arr_with_values.size == 3)
+    assert_true(arr_with_values.capacity == 3)
+    assert_true(arr_with_values[0] == 1)
+    assert_true(arr_with_values[1] == 2)
+    assert_true(arr_with_values[2] == 3)
+
+# Test Element Access
+fn test_myarray_element_access() raises:
+    var arr = MyArray[Int](1, 2, 3)
+    assert_true(arr[0] == 1)
+    assert_true(arr[1] == 2)
+    assert_true(arr[2] == 3)
+    arr[1] = 10
+    assert_true(arr[1] == 10)
+
+fn test_myarray_append() raises:
+    var arr = MyArray[Int]()
+    arr.append(1)
+    assert_true(arr.size == 1)
+    assert_true(arr[0] == 1)
+    # print(arr.capacity)
+    arr.append(2)
+    assert_true(arr.size == 2)
+    assert_true(arr[1] == 2)
+    # print(arr.capacity)
+    arr.append(3)
+    # print(arr.capacity)
+
+fn test_myarray_insert() raises:
+    var arr = MyArray[Int](1,2,5,8,9,4,0)
+    arr.insert(2, 3)
+    assert_true(arr.size == 8)
+    assert_true(arr[2] == 3)
+    assert_true(arr[4] == 8)
+    print(arr.__str__())
+
+def main():
+    test_myarray_initialization()
+    test_myarray_element_access()
+    test_myarray_append()
+    test_myarray_insert()
