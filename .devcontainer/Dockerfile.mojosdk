@@ -27,22 +27,22 @@ FROM ubuntu:20.04
 
 RUN apt-get update \
 #    && DEBIAN_FRONTEND=noninteractive TZ=$DEFAULT_TZ apt-get install -y \
-   && DEBIAN_FRONTEND=noninteractive apt-get install -y \
-   tzdata \
-   vim \
-   nano \
-   sudo \
-   curl \
-   wget \
-   git && \
-   rm -rf /var/lib/apt/lists/*
+        && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+        tzdata \
+        vim \
+        nano \
+        sudo \
+        curl \
+        wget \
+        git && \
+        rm -rf /var/lib/apt/lists/*
 
 # Download the latest version of minicoda py3.8 for linux x86/x64.
 RUN curl -fsSL https://repo.anaconda.com/miniconda/$( wget -O - https://repo.anaconda.com/miniconda/ 2>/dev/null | grep -o 'Miniconda3-py38_[^"]*-Linux-x86_64.sh' | head -n 1) > /tmp/miniconda.sh \
-       && chmod +x /tmp/miniconda.sh \
-       && /tmp/miniconda.sh -b -p /opt/conda \
-       && ln -s /opt/conda/etc/profile.d/conda.sh /etc/profile.d/conda.sh \
-       && echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc
+        && chmod +x /tmp/miniconda.sh \
+        && /tmp/miniconda.sh -b -p /opt/conda \
+        && ln -s /opt/conda/etc/profile.d/conda.sh /etc/profile.d/conda.sh \
+        && echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc
 
 COPY .condarc /opt/conda/
 ENV PATH=/opt/conda/bin:$PATH

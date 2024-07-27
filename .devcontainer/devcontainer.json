@@ -9,18 +9,19 @@
                 "terminal.integrated.shell.linux": "/bin/bash"
             },
             "extensions": [
-				"sugatoray.vscode-git-extension-pack",
-				"franneck94.vscode-python-dev-extension-pack",
-				"franneck94.vscode-c-cpp-dev-extension-pack",
-				"franneck94.vscode-coding-tools-extension-pack",
-				"gruntfuggly.todo-tree",
-				"vscode-icons-team.vscode-icons",
-				"streetsidesoftware.code-spell-checker",
-				"oderwat.indent-rainbow",
-				"mechatroner.rainbow-csv",
-				"moshfeu.compare-folders",
-				"mikestead.dotenv"
-			]
+                "sugatoray.vscode-git-extension-pack",
+                "franneck94.vscode-python-dev-extension-pack",
+                "franneck94.vscode-c-cpp-dev-extension-pack",
+                "franneck94.vscode-coding-tools-extension-pack",
+                "gruntfuggly.todo-tree",
+                "vscode-icons-team.vscode-icons",
+                "streetsidesoftware.code-spell-checker",
+                "oderwat.indent-rainbow",
+                "mechatroner.rainbow-csv",
+                "moshfeu.compare-folders",
+                "mikestead.dotenv",
+                "modular-mojotools.vscode-mojo"
+            ]
         }
     },
 	"remoteUser": "root",
