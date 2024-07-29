@@ -13,9 +13,12 @@ from memory.unsafe_pointer import (
     destroy_pointee
 )
 
+trait ArrayType(CollectionElement, RepresentableCollectionElement, EqualityComparable):
+    pass
+
 # @register_passable('trivial')
 # @value
-struct MyArray[T:CollectionElement]:
+struct MyArray[T:ArrayType]:
     var data:UnsafePointer[T]
     var size:Int
     var capacity:Int
@@ -74,14 +77,14 @@ struct MyArray[T:CollectionElement]:
     fn __len__(self) -> Int:
         return self.size
     
-    fn __str__[U: RepresentableCollectionElement](self: MyArray[U]) -> String:
+    fn __str__(self) -> String:
         var result:String = "[ "
         for i in range(self.size):
             result += repr(self[i]) + ", "
         result += "]"
         return result
     
-    fn __repr__[U: RepresentableCollectionElement](self:MyArray[U])->String:
+    fn __repr__(self)->String:
         return self.__str__()
     
     @always_inline

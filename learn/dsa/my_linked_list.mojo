@@ -6,12 +6,14 @@ from memory.unsafe_pointer import (
     initialize_pointee_move,
     destroy_pointee
 )
-from collections import Optional
-from benchmark import keep
-from memory import Arc
+# from benchmark import keep
 
-# @value
-struct Node[T:RepresentableCollectionElement]:
+alias DEBUG_DELETE = False
+
+trait LLType(CollectionElement, EqualityComparable, RepresentableCollectionElement):
+    pass
+
+struct Node[T:LLType]:
     var data:UnsafePointer[T]
     var next_ptr:UnsafePointer[Self]
     var prev_ptr:UnsafePointer[Self]
@@ -41,31 +43,49 @@ struct Node[T:RepresentableCollectionElement]:
 
     @always_inline
     fn __del__(owned self):
+        if DEBUG_DELETE:
+            print("deleting: ", repr(self.data[]))
         destroy_pointee(self.data)
-        # destroy_pointee(self.next_ptr)
-        # destroy_pointee(self.prev_ptr)
         if self.data:
+            if DEBUG_DELETE:
+                print("freeing data: ", self.data)
             self.data.free()
         if self.next_ptr:
+            if DEBUG_DELETE:
+                print("freeing next ptr: ", self.next_ptr)
             self.next_ptr.free()
-        if self.prev_ptr:
-            self.prev_ptr.free()
 
+    fn __str__(self) -> String:
+        return repr(self.data[])
 
-
-struct MyLinkedList[T:RepresentableCollectionElement]:
+struct MyLinkedList[T:LLType]:
     alias Node_Ptr = UnsafePointer[Node[T]]
     var head:Self.Node_Ptr
     var tail:Self.Node_Ptr
 
     @always_inline
     fn __del__(owned self):
+        var temp_ptr = self.head
+        while temp_ptr:
+            if DEBUG_DELETE:
+                print("node: ", temp_ptr, temp_ptr[].data, temp_ptr[].next_ptr, temp_ptr[].prev_ptr)
+            temp_ptr = temp_ptr[].next_ptr
+
+        temp_ptr = self.tail
+        while temp_ptr:
+            temp_ptr = temp_ptr[].prev_ptr
+            if temp_ptr:
+                if DEBUG_DELETE:
+                    print("deleting node: ", temp_ptr[].next_ptr)
+                destroy_pointee(temp_ptr[].next_ptr)
+
+        if DEBUG_DELETE:
+            print("deleting head: ", self.head)
         destroy_pointee(self.head)
-        destroy_pointee(self.tail)
         if self.head:
+            if DEBUG_DELETE:
+                print("Freeing head: ", self.head)
             self.head.free()
-        if self.tail:
-            self.tail.free()
 
     fn __init__(inout self):
         self.head = self.Node_Ptr()
@@ -87,7 +107,6 @@ struct MyLinkedList[T:RepresentableCollectionElement]:
             initialize_pointee_move(self.tail[].next_ptr, Node[T](value))
             self.tail[].next_ptr[].prev_ptr = self.tail
             self.tail = self.tail[].next_ptr
-    
 
     fn prepend(inout self, owned value:T):
         if not self.tail:
@@ -104,8 +123,51 @@ struct MyLinkedList[T:RepresentableCollectionElement]:
             self.head[].prev_ptr[].next_ptr = self.head
             self.head = self.head[].prev_ptr
 
-    # @staticmethod
-    fn __str__(inout self, backward:Bool=False) ->String:
+    fn insert(inout self, value:T, idx:Int) -> Bool:
+        if  not 0 < idx < self.size():
+            print("Insert index out of size, should be between 0 and len-1")
+            return False
+        
+        var temp_ptr = self.head
+        for _ in range(idx-1):
+            temp_ptr = temp_ptr[].next_ptr
+        
+        var new_node = self.Node_Ptr.alloc(1)
+        initialize_pointee_move(new_node, Node[T](value))
+        new_node[].next_ptr = temp_ptr[].next_ptr
+        new_node[].prev_ptr = temp_ptr
+        temp_ptr[].next_ptr[].prev_ptr = new_node
+        temp_ptr[].next_ptr = new_node
+        return True
+
+    fn delete(inout self, value:T) -> Bool:
+        var temp_ptr = self.head
+        while temp_ptr:
+            if temp_ptr[].data[] == value:
+                temp_ptr[].prev_ptr[].next_ptr = temp_ptr[].next_ptr
+                temp_ptr[].next_ptr[].prev_ptr = temp_ptr[].prev_ptr
+                return True
+            temp_ptr = temp_ptr[].next_ptr
+        return False
+    
+    @always_inline
+    fn contains(self, value:T) -> Bool:
+        var idx = self.find(value)
+        if idx>=0:
+            return True
+        return False
+
+    fn find(self, value:T) -> Int:
+        var idx:Int = -1
+        var temp_ptr = self.head
+        while temp_ptr:
+            idx += 1
+            if temp_ptr[].data[] == value:
+                return idx
+            temp_ptr = temp_ptr[].next_ptr
+        return -1
+    
+    fn __str__(self, backward:Bool=False) -> String:
         var result:String = "[ " 
         if not backward:
             var temp_ptr = self.head
@@ -118,8 +180,17 @@ struct MyLinkedList[T:RepresentableCollectionElement]:
                 result += repr(temp_ptr[].data[]) + ", "
                 temp_ptr = temp_ptr[].prev_ptr
         result += "]"
-        # print(result)
         return result
+    
+    
+    @always_inline
+    fn size(self) -> Int:
+        var _len = 0
+        var temp_ptr = self.head
+        while temp_ptr:
+            _len += 1
+            temp_ptr = temp_ptr[].next_ptr
+        return _len
             
 
 from testing import assert_true, assert_equal
@@ -137,8 +208,17 @@ fn test_mylinkedlist() raises:
     ll.prepend(-30)
     ll.prepend(-40)
 
-    print(ll.__str__(backward=False))
+    print(ll.__str__())
     print(ll.__str__(backward=True))
+    print(ll.size())
+
+    print("Delete: ", ll.delete(10))
+    print(ll.__str__())
+    print(ll.size())
+
+    print("Insert: ", ll.insert(value=108, idx=5))
+    print(ll.__str__())
+    print(ll.size())
 
 
 def main():
