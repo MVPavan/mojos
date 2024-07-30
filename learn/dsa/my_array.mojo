@@ -56,7 +56,7 @@ struct MyArray[T:ArrayType]:
 
     fn __getitem__(self, index:Int) -> T:
         var _index = self.normalized_index(index)
-        return self.data.offset(_index)[]
+        return (self.data+_index)[]
     
     fn __setitem__(self, index:Int, owned value:T):
         var _index = self.normalized_index(index)
@@ -89,7 +89,7 @@ struct MyArray[T:ArrayType]:
     
     @always_inline
     fn pointer_at(self, offset:Int)->UnsafePointer[T]:
-        return self.data.offset(offset)
+        return self.data+offset
     
     fn _realloc(inout self, new_capcity:Int):
         var new_data = UnsafePointer[T].alloc(new_capcity)

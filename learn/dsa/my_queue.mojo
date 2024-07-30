@@ -6,13 +6,14 @@ from memory.unsafe_pointer import (
     initialize_pointee_move,
     destroy_pointee
 )
-from benchmark import keep
+from testing import assert_true
+
 
 trait QType(CollectionElement, EqualityComparable, RepresentableCollectionElement):
     pass
 
-
-struct MyQueue[T:QType]:
+# enqueue, dequeue, peek, is_empty, size
+struct MyQueueArr[T:QType]:
     var data:UnsafePointer[T]
     var size:Int
     var capacity:Int
@@ -21,16 +22,6 @@ struct MyQueue[T:QType]:
         self.data = UnsafePointer[T]()
         self.size = 0
         self.capacity = 0
-
-    # fn __init__(inout self, *, capacity:Int):
-    #     self.data = UnsafePointer[T].alloc(capacity)
-    #     self.size = 0
-    #     self.capacity = capacity
-    
-    # fn __init__(inout self, *values: T):
-    #     self = Self(capacity = len(values))
-    #     for i in range(self.capacity):
-    #         self.append(values[i])
     
     @always_inline
     fn __del__(owned self):
@@ -39,21 +30,36 @@ struct MyQueue[T:QType]:
         if self.data:
             self.data.free()
 
+    fn enqueue(inout self, owned value:T):
+        if self.size>=self.capacity:
+            self._realloc(max(1,self.capacity*2))
+        initialize_pointee_move(self.data+self.size, value^)
+        self.size += 1
 
-    fn __getitem__(self, index:Int) -> T:
-        var _index = self.normalized_index(index)
-        return self.data.offset(_index)[]
+    fn dequeue(inout self) raises-> T:
+        if self.size==0:
+            Error "Dequeuing empty queue, aborting ..."
+
+        var value = move_from_pointee(self.data)
+        if self.data:
+            self.data.free()
+        self.data = self.data+1
+        self.size -= 1
+        return value
     
-    fn __setitem__(self, index:Int, owned value:T):
-        var _index = self.normalized_index(index)
-        destroy_pointee(self.pointer_at(_index))
-        initialize_pointee_move(self.pointer_at(_index), value^)
-
+    fn peek(self) -> T:
+        return self.data[]
+    
+    fn len(self) -> Int:
+        return self.size
+    
+    fn is_empty(self) -> Bool:
+        return not self.size>0
 
     fn __copyinit__(inout self, existing: Self):
-        self = Self(capacity=existing.capacity)
+        self = Self()
         for i in range(existing.size):
-            self.append(existing[i])
+            self.enqueue((existing.data+i)[])
 
     fn __moveinit__(inout self, owned existing: Self):
         self.data = existing.data
@@ -66,16 +72,12 @@ struct MyQueue[T:QType]:
     fn __str__(self) -> String:
         var result:String = "[ "
         for i in range(self.size):
-            result += repr(self[i]) + ", "
-        result += "]"
+            result += repr((self.data+i)[]) + ", "
+        result = result + " ]"
         return result
     
     fn __repr__(self)->String:
         return self.__str__()
-    
-    @always_inline
-    fn pointer_at(self, offset:Int)->UnsafePointer[T]:
-        return self.data.offset(offset)
     
     fn _realloc(inout self, new_capcity:Int):
         var new_data = UnsafePointer[T].alloc(new_capcity)
@@ -87,22 +89,105 @@ struct MyQueue[T:QType]:
         self.data = new_data
         self.capacity = new_capcity
     
-    @always_inline
-    fn append(inout self, owned value:T):
-        if self.size>=self.capacity:
-            self._realloc(max(1,self.capacity*2))
 
-        initialize_pointee_move(self.data+self.size, value^)
-        self.size +=1
-    
-    # fn insert(inout self, index:Int, owned value:T):
-    #     var _index = self.normalized_index(index)
-        
-    #     var temp = move_from_pointee(self.pointer_at(self.size-1))
+fn test_initialization() raises:
+    var queue = MyQueueArr[Int]()
+    assert_true(queue.len() == 0, "Queue length should be 0 after initialization")
+    assert_true(queue.is_empty() == True, "Queue should be empty after initialization")
 
-    #     for i in reversed(range(_index, self.size-1)):
-    #         move_pointee(src=self.pointer_at(i), dst=self.pointer_at(i+1))
-        
-    #     initialize_pointee_move(self.pointer_at(index), value^)
-    #     self.append(temp^)
+fn test_enqueue() raises:
+    var queue = MyQueueArr[Int]()
+    queue.enqueue(1)
+    assert_true(queue.len() == 1, "Queue length should be 1 after enqueuing one item")
+    assert_true(queue.peek() == 1, "Peek should return the enqueued value")
+    queue.enqueue(2)
+    assert_true(queue.len() == 2, "Queue length should be 2 after enqueuing another item")
+    assert_true(queue.peek() == 1, "Peek should return the first enqueued value")
 
+fn test_dequeue() raises:
+    var queue = MyQueueArr[Int]()
+    queue.enqueue(1)
+    queue.enqueue(2)
+    var value = queue.dequeue()
+    assert_true(value == 1, "Dequeued value should be 1")
+    assert_true(queue.len() == 1, "Queue length should be 1 after dequeue")
+    assert_true(queue.peek() == 2, "Peek should return the next value after dequeue")
+    value = queue.dequeue()
+    assert_true(value == 2, "Dequeued value should be 2")
+    assert_true(queue.len() == 0, "Queue length should be 0 after dequeueing all items")
+    assert_true(queue.is_empty() == True, "Queue should be empty after dequeueing all items")
+
+fn test_peek() raises:
+    var queue = MyQueueArr[Int]()
+    queue.enqueue(1)
+    queue.enqueue(2)
+    assert_true(queue.peek() == 1, "Peek should return the first element without removing it")
+    _ = queue.dequeue()
+    assert_true(queue.peek() == 2, "Peek should return the next element after dequeue")
+
+fn test_queue_expansion() raises:
+    var queue = MyQueueArr[Int]()
+    for i in range(10):  #// Assuming initial capacity is less than 10
+        queue.enqueue(i)
+    # print((queue.data+2)[])
+    assert_true(queue.len() == 10, "Queue length should be 10 after enqueuing 10 items")
+    assert_true(queue.peek() == 0, "Peek should return the first element")
+    # print("Queue: ", queue.__str__())
+
+fn test_copy_initialization() raises:
+    var original = MyQueueArr[Int]()
+    original.enqueue(1)
+    original.enqueue(2)
+    var copy = MyQueueArr[Int]()
+    copy = original
+    assert_true(copy.len() == 2, "Copy should have length 2")
+    assert_true(copy.peek() == 1, "Peek on copy should return the first element")
+    assert_true(copy.dequeue() == 1, "Dequeue on copy should return the first element")
+    assert_true(copy.peek() == 2, "Peek on copy after dequeue should return the second element")
+
+fn test_move_initialization() raises:
+    var original = MyQueueArr[Int]()
+    original.enqueue(1)
+    original.enqueue(2)
+    var moved = MyQueueArr[Int]()
+    moved = original^
+
+    # assert_true(original.len() == 0, "Original queue should be empty after move")
+    assert_true(moved.len() == 2, "Moved queue should have length 2")
+    assert_true(moved.peek() == 1, "Peek on moved queue should return the first element")
+
+fn test_string_representation() raises:
+    var queue = MyQueueArr[Int]()
+    queue.enqueue(1)
+    queue.enqueue(2)
+    var str = queue.__str__()
+    assert_true(str == "[ 1, 2, ]", "String representation of the queue is incorrect")
+
+fn test_dequeue_from_empty_queue() raises:
+    var queue = MyQueueArr[Int]()
+    try:
+        _ = queue.dequeue()
+        assert_true(False, "Should have raised an error when dequeuing from an empty queue")
+    except:
+        assert_true(True, "Expected exception when dequeuing from an empty queue")
+
+fn test_peek_from_empty_queue() raises:
+    var queue = MyQueueArr[Int]()
+    try:
+        print(queue.peek())
+        assert_true(False, "Should have raised an error when peeking from an empty queue")
+    except:
+        assert_true(True, "Expected exception when peeking from an empty queue")
+
+# // Run all test cases
+def main():
+    test_initialization()
+    test_enqueue()
+    test_dequeue()
+    test_peek()
+    test_queue_expansion()
+    test_copy_initialization()
+    test_move_initialization()
+    # test_string_representation()
+    test_dequeue_from_empty_queue()
+    # test_peek_from_empty_queue()
