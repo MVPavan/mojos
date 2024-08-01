@@ -6,188 +6,308 @@ from memory.unsafe_pointer import (
     initialize_pointee_move,
     destroy_pointee
 )
+from my_linked_list import MyLinkedList
 from testing import assert_true
 
 
 trait QType(CollectionElement, EqualityComparable, RepresentableCollectionElement):
     pass
 
-# enqueue, dequeue, peek, is_empty, size
-struct MyQueueArr[T:QType]:
-    var data:UnsafePointer[T]
-    var size:Int
-    var capacity:Int
+alias DEBUG_DELETE = False
 
-    fn __init__(inout self,):
+
+struct Node[T:QType]:
+    var data:UnsafePointer[T]
+    var next_ptr:UnsafePointer[Self]
+    var prev_ptr:UnsafePointer[Self]
+
+    fn __init__(inout self):
         self.data = UnsafePointer[T]()
-        self.size = 0
-        self.capacity = 0
+        self.next_ptr = UnsafePointer[Self]()
+        self.prev_ptr = UnsafePointer[Self]()
+
+    fn __init__(inout self, owned value:T):
+        self = Self()
+        self.data = self.data.alloc(1)
+        initialize_pointee_move(self.data, value^)
     
+    fn __copyinit__(inout self, existing:Self):
+        # self = Self(value=existing.data[])
+        self.data = existing.data
+        self.next_ptr = existing.next_ptr
+        self.prev_ptr = existing.prev_ptr
+    
+    fn __moveinit__(inout self, owned existing:Self):
+        self = Self()
+        self.data = self.data.alloc(1)
+        move_pointee(src=existing.data, dst=self.data)
+        self.next_ptr = existing.next_ptr
+        self.prev_ptr = existing.prev_ptr
+
     @always_inline
     fn __del__(owned self):
-        for i in range(self.size):
-            destroy_pointee(self.data + i)
         if self.data:
+            if DEBUG_DELETE:
+                print("deleting and freeing data: ", self.data, repr(self.data[]))
+            destroy_pointee(self.data)
             self.data.free()
-
-    fn enqueue(inout self, owned value:T):
-        if self.size>=self.capacity:
-            self._realloc(max(1,self.capacity*2))
-        initialize_pointee_move(self.data+self.size, value^)
-        self.size += 1
-
-    fn dequeue(inout self) raises-> T:
-        if self.size==0:
-            Error "Dequeuing empty queue, aborting ..."
-
-        var value = move_from_pointee(self.data)
-        if self.data:
-            self.data.free()
-        self.data = self.data+1
-        self.size -= 1
-        return value
-    
-    fn peek(self) -> T:
-        return self.data[]
-    
-    fn len(self) -> Int:
-        return self.size
-    
-    fn is_empty(self) -> Bool:
-        return not self.size>0
-
-    fn __copyinit__(inout self, existing: Self):
-        self = Self()
-        for i in range(existing.size):
-            self.enqueue((existing.data+i)[])
-
-    fn __moveinit__(inout self, owned existing: Self):
-        self.data = existing.data
-        self.size = existing.size
-        self.capacity = existing.capacity
-
-    fn __len__(self) -> Int:
-        return self.size
+        self.next_ptr = UnsafePointer[Self]()
+        self.prev_ptr = UnsafePointer[Self]()
+        self.data = UnsafePointer[T]()
+        if DEBUG_DELETE:
+            print("Nulling Node ptrs: ",self.data, self.prev_ptr, self.next_ptr)
     
     fn __str__(self) -> String:
-        var result:String = "[ "
-        for i in range(self.size):
-            result += repr((self.data+i)[]) + ", "
-        result = result + " ]"
-        return result
+        return repr(self.data[])
+
+
+struct MyQueueLL[T:QType]:
+    alias Node_Ptr = UnsafePointer[Node[T]]
+    var head:Self.Node_Ptr
+    var tail:Self.Node_Ptr
+    var size:UInt16
     
-    fn __repr__(self)->String:
-        return self.__str__()
+    fn __init__(inout self):
+        self.head = self.Node_Ptr()
+        self.tail = self.Node_Ptr()
+        self.size = 0
+
+    @always_inline    
+    @staticmethod
+    fn destroy_and_free(inout ptr:Self.Node_Ptr):
+        if ptr:
+            if DEBUG_DELETE:
+                print("deleting node: ", ptr)
+            destroy_pointee(ptr)
+            if DEBUG_DELETE:
+                print("Freeing node: ", ptr)
+            ptr.free()
+            ptr = Self.Node_Ptr()
+            if DEBUG_DELETE:
+                print("Nulling node ptr: ", ptr)
     
-    fn _realloc(inout self, new_capcity:Int):
-        var new_data = UnsafePointer[T].alloc(new_capcity)
-        for i in range(self.size):
-            move_pointee(src=self.data+i, dst=new_data+i)
+    @always_inline
+    fn print_memory(self):
+        if DEBUG_DELETE:
+            var temp_ptr = self.head
+            while temp_ptr:
+                print("node: ", temp_ptr, temp_ptr[].data, temp_ptr[].prev_ptr, temp_ptr[].next_ptr)
+                temp_ptr = temp_ptr[].next_ptr
+
+
+    @always_inline
+    fn __del__(owned self):
+        self.print_memory()
+        var temp_ptr = self.tail[].prev_ptr
+        while temp_ptr:
+            self.destroy_and_free(temp_ptr[].next_ptr)
+            temp_ptr = temp_ptr[].prev_ptr
+        self.destroy_and_free(self.head)
+    
+    @always_inline
+    fn len(self) -> UInt16:
+        var _len = 0
+        var temp_ptr = self.head
+        while temp_ptr:
+            _len += 1
+            temp_ptr = temp_ptr[].next_ptr
+        return _len
+    
+    fn is_empty(self) -> Bool:
+        return self.size==0
+    
+    fn appendleft(inout self, owned value:T):
+        if not self.tail:
+            self.tail = self.tail.alloc(1)
+            initialize_pointee_move(self.tail, Node[T](value))
+            self.head = self.tail
+        else:
+            self.head[].prev_ptr = self.head[].prev_ptr.alloc(1)
+            initialize_pointee_move(self.head[].prev_ptr, Node[T](value))
+            self.head[].prev_ptr[].next_ptr = self.head
+            self.head = self.head[].prev_ptr
         
-        if self.data:
-            self.data.free()
-        self.data = new_data
-        self.capacity = new_capcity
+        # self.size = self.len()
+        self.size += 1
+
+    fn appendright(inout self, owned value:T):
+        if not self.head:
+            self.head = self.head.alloc(1)
+            initialize_pointee_move(self.head, Node[T](value))
+            self.tail = self.head
+        else:
+            self.tail[].next_ptr = self.tail[].next_ptr.alloc(1)
+            initialize_pointee_move(self.tail[].next_ptr, Node[T](value))
+            self.tail[].next_ptr[].prev_ptr = self.tail
+            self.tail = self.tail[].next_ptr
+        
+        self.size += 1
+
+    fn popleft(inout self) raises -> T:
+        if self.size == 0:
+            raise Error("Index Error - Empty Queue")
+        var value = move_from_pointee(self.head[].data)
+        if self.size > 1:
+            self.head = self.head[].next_ptr
+            self.destroy_and_free(self.head[].prev_ptr)
+        else:
+            self.destroy_and_free(self.head)
+            self.tail = self.Node_Ptr()
+        self.size -= 1
+        return value^
     
+    
+    fn popright(inout self) raises -> T:
+        if self.size == 0:
+            raise Error("Index Error - Empty Queue")
+        var value = move_from_pointee(self.tail[].data)
+        if self.size > 1:
+            self.tail = self.tail[].prev_ptr
+            self.destroy_and_free(self.tail[].next_ptr)
+        else:
+            self.destroy_and_free(self.tail)
+            self.head = self.Node_Ptr()
+        self.size -= 1
+        return value^
 
-fn test_initialization() raises:
-    var queue = MyQueueArr[Int]()
-    assert_true(queue.len() == 0, "Queue length should be 0 after initialization")
-    assert_true(queue.is_empty() == True, "Queue should be empty after initialization")
+    fn __str__(self, backward:Bool=False) -> String:
+        var result:String = "[ " 
+        if not backward:
+            var temp_ptr = self.head
+            while temp_ptr:
+                result += repr(temp_ptr[].data[]) + ", "
+                temp_ptr = temp_ptr[].next_ptr
+        else:
+            var temp_ptr = self.tail
+            while temp_ptr:
+                result += repr(temp_ptr[].data[]) + ", "
+                temp_ptr = temp_ptr[].prev_ptr
+        result += "]"
+        return result
 
-fn test_enqueue() raises:
-    var queue = MyQueueArr[Int]()
-    queue.enqueue(1)
-    assert_true(queue.len() == 1, "Queue length should be 1 after enqueuing one item")
-    assert_true(queue.peek() == 1, "Peek should return the enqueued value")
-    queue.enqueue(2)
-    assert_true(queue.len() == 2, "Queue length should be 2 after enqueuing another item")
-    assert_true(queue.peek() == 1, "Peek should return the first enqueued value")
+alias MyQueue = MyQueueLL
 
-fn test_dequeue() raises:
-    var queue = MyQueueArr[Int]()
-    queue.enqueue(1)
-    queue.enqueue(2)
-    var value = queue.dequeue()
-    assert_true(value == 1, "Dequeued value should be 1")
-    assert_true(queue.len() == 1, "Queue length should be 1 after dequeue")
-    assert_true(queue.peek() == 2, "Peek should return the next value after dequeue")
-    value = queue.dequeue()
-    assert_true(value == 2, "Dequeued value should be 2")
-    assert_true(queue.len() == 0, "Queue length should be 0 after dequeueing all items")
-    assert_true(queue.is_empty() == True, "Queue should be empty after dequeueing all items")
+def test_queue_initialization():
+    q = MyQueue[Int]()
+    assert_true(q.len() == q.size)
+    assert_true(q.is_empty())
+    assert_true(q.len() == 0)
+    print(q.__str__())
+    assert_true(q.len() == q.size)
+    print("test_queue_initialization passed.")
 
-fn test_peek() raises:
-    var queue = MyQueueArr[Int]()
-    queue.enqueue(1)
-    queue.enqueue(2)
-    assert_true(queue.peek() == 1, "Peek should return the first element without removing it")
-    _ = queue.dequeue()
-    assert_true(queue.peek() == 2, "Peek should return the next element after dequeue")
+def test_appendleft_and_popleft():
+    q = MyQueue[Int]()
+    q.appendleft(10)
+    assert_true(not q.is_empty())
+    assert_true(q.len() == 1)
+    print(q.__str__())
+    assert_true(q.len() == q.size)
+    
+    q.appendleft(20)
+    assert_true(q.len() == 2)
+    print(q.__str__())
+    assert_true(q.len() == q.size)
+    
+    q.print_memory()
+    
+    value = q.popleft()
+    assert_true(value == 20)
+    assert_true(q.len() == 1)
+    print(q.__str__())
+    assert_true(q.len() == q.size)
+    
+    q.print_memory()
+    
+    value = q.popleft()
+    assert_true(value == 10)
+    assert_true(q.is_empty())
+    print(q.__str__())
+    assert_true(q.len() == q.size)
 
-fn test_queue_expansion() raises:
-    var queue = MyQueueArr[Int]()
-    for i in range(10):  #// Assuming initial capacity is less than 10
-        queue.enqueue(i)
-    # print((queue.data+2)[])
-    assert_true(queue.len() == 10, "Queue length should be 10 after enqueuing 10 items")
-    assert_true(queue.peek() == 0, "Peek should return the first element")
-    # print("Queue: ", queue.__str__())
+    print("test_appendleft_and_popleft passed.")
 
-fn test_copy_initialization() raises:
-    var original = MyQueueArr[Int]()
-    original.enqueue(1)
-    original.enqueue(2)
-    var copy = MyQueueArr[Int]()
-    copy = original
-    assert_true(copy.len() == 2, "Copy should have length 2")
-    assert_true(copy.peek() == 1, "Peek on copy should return the first element")
-    assert_true(copy.dequeue() == 1, "Dequeue on copy should return the first element")
-    assert_true(copy.peek() == 2, "Peek on copy after dequeue should return the second element")
+def test_appendright_and_popright():
+    q = MyQueue[Int]()
+    q.appendright(10)
+    assert_true(not q.is_empty())
+    assert_true(q.len() == 1)
+    print(q.__str__())
+    assert_true(q.len() == q.size)
+    
+    q.appendright(20)
+    assert_true(q.len() == 2)
+    print(q.__str__())
+    assert_true(q.len() == q.size)
 
-fn test_move_initialization() raises:
-    var original = MyQueueArr[Int]()
-    original.enqueue(1)
-    original.enqueue(2)
-    var moved = MyQueueArr[Int]()
-    moved = original^
+    q.print_memory()
 
-    # assert_true(original.len() == 0, "Original queue should be empty after move")
-    assert_true(moved.len() == 2, "Moved queue should have length 2")
-    assert_true(moved.peek() == 1, "Peek on moved queue should return the first element")
+    value = q.popright()
+    assert_true(value == 20)
+    assert_true(q.len() == 1)
+    print(q.__str__())
+    assert_true(q.len() == q.size)
+    
+    q.print_memory()
 
-fn test_string_representation() raises:
-    var queue = MyQueueArr[Int]()
-    queue.enqueue(1)
-    queue.enqueue(2)
-    var str = queue.__str__()
-    assert_true(str == "[ 1, 2, ]", "String representation of the queue is incorrect")
+    value = q.popright()
+    assert_true(value == 10)
+    assert_true(q.is_empty())
+    print(q.__str__())
+    assert_true(q.len() == q.size)
+    print("test_appendright_and_popright passed.")
 
-fn test_dequeue_from_empty_queue() raises:
-    var queue = MyQueueArr[Int]()
+def test_mixed_operations():
+    q = MyQueue[Int]()
+    q.appendleft(14)
+    q.appendright(16)
+    q.appendleft(10)
+    q.appendright(20)
+    q.appendleft(5)
+    q.appendright(25)
+    assert_true(q.len() == 6)
+    print(q.__str__())
+    assert_true(q.len() == q.size)
+    
+    q.print_memory()
+    print("Popping: ", 5)
+    value = q.popleft()
+    assert_true(value == 5)
+    assert_true(q.len() == 5)
+    print(q.__str__())
+    assert_true(q.len() == q.size)
+    
+    q.print_memory()
+
+    print("Popping: ", 25)
+    value = q.popright()
+    assert_true(value == 25)
+    assert_true(q.len() == 4)
+    print(q.__str__())
+    assert_true(q.len() == q.size)
+    print("test_mixed_operations passed.")
+
+def test_empty_pop():
+    q = MyQueue[Int]()
     try:
-        _ = queue.dequeue()
-        assert_true(False, "Should have raised an error when dequeuing from an empty queue")
-    except:
-        assert_true(True, "Expected exception when dequeuing from an empty queue")
-
-fn test_peek_from_empty_queue() raises:
-    var queue = MyQueueArr[Int]()
+        q.popleft()
+    except Error:
+        assert_true(True)
+    else:
+        assert_true(False)
+    
     try:
-        print(queue.peek())
-        assert_true(False, "Should have raised an error when peeking from an empty queue")
-    except:
-        assert_true(True, "Expected exception when peeking from an empty queue")
+        q.popright()
+    except Error:
+        assert_true(True)
+    else:
+        assert_true(False)
+    print("test_empty_pop passed.")
 
-# // Run all test cases
 def main():
-    test_initialization()
-    test_enqueue()
-    test_dequeue()
-    test_peek()
-    test_queue_expansion()
-    test_copy_initialization()
-    test_move_initialization()
-    # test_string_representation()
-    test_dequeue_from_empty_queue()
-    # test_peek_from_empty_queue()
+    # Run tests
+    # test_queue_initialization()
+    # test_appendleft_and_popleft()
+    # test_appendright_and_popright()
+    test_mixed_operations()
+    # test_empty_pop()

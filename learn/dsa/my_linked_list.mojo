@@ -43,17 +43,17 @@ struct Node[T:LLType]:
 
     @always_inline
     fn __del__(owned self):
-        if DEBUG_DELETE:
-            print("deleting: ", repr(self.data[]))
-        destroy_pointee(self.data)
         if self.data:
             if DEBUG_DELETE:
-                print("freeing data: ", self.data)
+                print("deleting and freeing data: ", self.data, repr(self.data[]))
+            destroy_pointee(self.data)
             self.data.free()
-        if self.next_ptr:
-            if DEBUG_DELETE:
-                print("freeing next ptr: ", self.next_ptr)
-            self.next_ptr.free()
+        self.next_ptr = UnsafePointer[Self]()
+        self.prev_ptr = UnsafePointer[Self]()
+        self.data = UnsafePointer[T]()
+        if DEBUG_DELETE:
+            print("Nulling Node ptrs: ",self.data, self.prev_ptr, self.next_ptr)
+    
 
     fn __str__(self) -> String:
         return repr(self.data[])
@@ -63,29 +63,38 @@ struct MyLinkedList[T:LLType]:
     var head:Self.Node_Ptr
     var tail:Self.Node_Ptr
 
+    @always_inline    
+    @staticmethod
+    fn destroy_and_free(inout ptr:Self.Node_Ptr):
+        if ptr:
+            if DEBUG_DELETE:
+                print("deleting node: ", ptr)
+            destroy_pointee(ptr)
+            if DEBUG_DELETE:
+                print("Freeing node: ", ptr)
+            ptr.free()
+            ptr = Self.Node_Ptr()
+            if DEBUG_DELETE:
+                print("Nulling node ptr: ", ptr)
+    
+    @always_inline
+    fn print_memory(self):
+        if DEBUG_DELETE: 
+            var temp_ptr = self.head
+            while temp_ptr:
+                print("node: ", temp_ptr, temp_ptr[].data, temp_ptr[].prev_ptr, temp_ptr[].next_ptr)
+                temp_ptr = temp_ptr[].next_ptr
+
+
     @always_inline
     fn __del__(owned self):
-        var temp_ptr = self.head
+        self.print_memory()
+        var temp_ptr = self.tail[].prev_ptr
         while temp_ptr:
-            if DEBUG_DELETE:
-                print("node: ", temp_ptr, temp_ptr[].data, temp_ptr[].next_ptr, temp_ptr[].prev_ptr)
-            temp_ptr = temp_ptr[].next_ptr
-
-        temp_ptr = self.tail
-        while temp_ptr:
+            self.destroy_and_free(temp_ptr[].next_ptr)
             temp_ptr = temp_ptr[].prev_ptr
-            if temp_ptr:
-                if DEBUG_DELETE:
-                    print("deleting node: ", temp_ptr[].next_ptr)
-                destroy_pointee(temp_ptr[].next_ptr)
+        self.destroy_and_free(self.head)
 
-        if DEBUG_DELETE:
-            print("deleting head: ", self.head)
-        destroy_pointee(self.head)
-        if self.head:
-            if DEBUG_DELETE:
-                print("Freeing head: ", self.head)
-            self.head.free()
 
     fn __init__(inout self):
         self.head = self.Node_Ptr()
@@ -95,13 +104,14 @@ struct MyLinkedList[T:LLType]:
         if not self.head:
             self.head = self.head.alloc(1)
             initialize_pointee_move(self.head, Node[T](value))
+            self.tail = self.head
             # self.head = self.Node_Ptr.address_of(Node[T](value))
-        elif not self.tail:
-            self.tail = self.tail.alloc(1)
-            initialize_pointee_move(self.tail, Node[T](value))
-            # self.tail = self.Node_Ptr.address_of(Node[T](value))
-            self.head[].next_ptr = self.tail
-            self.tail[].prev_ptr = self.head
+        # elif not self.tail:
+        #     self.tail = self.tail.alloc(1)
+        #     initialize_pointee_move(self.tail, Node[T](value))
+        #     # self.tail = self.Node_Ptr.address_of(Node[T](value))
+        #     self.head[].next_ptr = self.tail
+        #     self.tail[].prev_ptr = self.head
         else:
             self.tail[].next_ptr = self.tail[].next_ptr.alloc(1)
             initialize_pointee_move(self.tail[].next_ptr, Node[T](value))
@@ -112,11 +122,12 @@ struct MyLinkedList[T:LLType]:
         if not self.tail:
             self.tail = self.tail.alloc(1)
             initialize_pointee_move(self.tail, Node[T](value))
-        elif not self.head:
-            self.head = self.head.alloc(1)
-            initialize_pointee_move(self.head, Node[T](value))
-            self.head[].next_ptr = self.tail
-            self.tail[].prev_ptr = self.head
+            self.head = self.tail
+        # elif not self.head:
+        #     self.head = self.head.alloc(1)
+        #     initialize_pointee_move(self.head, Node[T](value))
+        #     self.head[].next_ptr = self.tail
+        #     self.tail[].prev_ptr = self.head
         else:
             self.head[].prev_ptr = self.head[].prev_ptr.alloc(1)
             initialize_pointee_move(self.head[].prev_ptr, Node[T](value))
@@ -146,6 +157,7 @@ struct MyLinkedList[T:LLType]:
             if temp_ptr[].data[] == value:
                 temp_ptr[].prev_ptr[].next_ptr = temp_ptr[].next_ptr
                 temp_ptr[].next_ptr[].prev_ptr = temp_ptr[].prev_ptr
+                self.destroy_and_free(temp_ptr)
                 return True
             temp_ptr = temp_ptr[].next_ptr
         return False
