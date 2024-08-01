@@ -98,10 +98,11 @@ struct MyQueueLL[T:QType]:
     @always_inline
     fn __del__(owned self):
         self.print_memory()
-        var temp_ptr = self.tail[].prev_ptr
-        while temp_ptr:
-            self.destroy_and_free(temp_ptr[].next_ptr)
-            temp_ptr = temp_ptr[].prev_ptr
+        if self.tail:
+            var temp_ptr = self.tail[].prev_ptr
+            while temp_ptr:
+                self.destroy_and_free(temp_ptr[].next_ptr)
+                temp_ptr = temp_ptr[].prev_ptr
         self.destroy_and_free(self.head)
     
     @always_inline
@@ -169,19 +170,22 @@ struct MyQueueLL[T:QType]:
             self.head = self.Node_Ptr()
         self.size -= 1
         return value^
+    
+    fn clear(inout self) :
+        if self.size==0: return 
+        var temp_ptr = self.tail[].prev_ptr
+        while temp_ptr:
+            self.destroy_and_free(temp_ptr[].next_ptr)
+            temp_ptr = temp_ptr[].prev_ptr
+        self.destroy_and_free(self.head)
+        self.__init__()
 
-    fn __str__(self, backward:Bool=False) -> String:
+    fn __str__(self) -> String:
         var result:String = "[ " 
-        if not backward:
-            var temp_ptr = self.head
-            while temp_ptr:
-                result += repr(temp_ptr[].data[]) + ", "
-                temp_ptr = temp_ptr[].next_ptr
-        else:
-            var temp_ptr = self.tail
-            while temp_ptr:
-                result += repr(temp_ptr[].data[]) + ", "
-                temp_ptr = temp_ptr[].prev_ptr
+        var temp_ptr = self.head
+        while temp_ptr:
+            result += repr(temp_ptr[].data[]) + ", "
+            temp_ptr = temp_ptr[].next_ptr
         result += "]"
         return result
 
@@ -283,6 +287,10 @@ def test_mixed_operations():
     value = q.popright()
     assert_true(value == 25)
     assert_true(q.len() == 4)
+    print(q.__str__())
+    assert_true(q.len() == q.size)
+
+    q.clear()
     print(q.__str__())
     assert_true(q.len() == q.size)
     print("test_mixed_operations passed.")

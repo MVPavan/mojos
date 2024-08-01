@@ -89,10 +89,11 @@ struct MyLinkedList[T:LLType]:
     @always_inline
     fn __del__(owned self):
         self.print_memory()
-        var temp_ptr = self.tail[].prev_ptr
-        while temp_ptr:
-            self.destroy_and_free(temp_ptr[].next_ptr)
-            temp_ptr = temp_ptr[].prev_ptr
+        if self.tail:
+            var temp_ptr = self.tail[].prev_ptr
+            while temp_ptr:
+                self.destroy_and_free(temp_ptr[].next_ptr)
+                temp_ptr = temp_ptr[].prev_ptr
         self.destroy_and_free(self.head)
 
 
