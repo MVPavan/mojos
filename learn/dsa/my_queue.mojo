@@ -103,6 +103,7 @@ struct MyQueueLL[T:QType]:
             while temp_ptr:
                 self.destroy_and_free(temp_ptr[].next_ptr)
                 temp_ptr = temp_ptr[].prev_ptr
+            self.tail = temp_ptr
         self.destroy_and_free(self.head)
     
     @always_inline
@@ -171,13 +172,123 @@ struct MyQueueLL[T:QType]:
         self.size -= 1
         return value^
     
-    fn clear(inout self) :
-        if self.size==0: return 
-        var temp_ptr = self.tail[].prev_ptr
+    fn extendright(inout self, existing:Self):
+        if existing.head:
+            var temp_ptr = existing.head
+            while temp_ptr:
+                self.appendright(temp_ptr[].data[])
+                temp_ptr = temp_ptr[].next_ptr
+        elif existing.tail:
+                self.appendright(existing.tail[].data[])
+    
+    fn extendleft(inout self, existing:Self):
+        if existing.tail:
+            var temp_ptr = existing.tail
+            while temp_ptr:
+                self.appendleft(temp_ptr[].data[])
+                temp_ptr = temp_ptr[].prev_ptr
+        elif existing.head:
+                self.appendleft(existing.head[].data[])
+    
+    fn __copyinit__(inout self, existing:Self):
+        self = Self()
+        self.extendleft(existing)
+
+    fn __moveinit__(inout self, owned existing:Self):
+        self = Self()
+        if existing.head:
+            while existing.head:
+                self.appendright(move_from_pointee(existing.head[].data))
+                existing.head = existing.head[].next_ptr
+        elif existing.tail:
+                self.appendright(move_from_pointee(existing.tail[].data))
+    
+    fn insert(inout self, value:T, idx:UInt16) -> Bool:
+        if  not (idx > 0 and idx < self.size) :
+            print("Insert index out of size, should be between 0 and len-1")
+            return False
+        
+        var temp_ptr = self.head
+        for _ in range(idx-1):
+            temp_ptr = temp_ptr[].next_ptr
+        
+        var new_node = self.Node_Ptr.alloc(1)
+        initialize_pointee_move(new_node, Node[T](value))
+        new_node[].next_ptr = temp_ptr[].next_ptr
+        new_node[].prev_ptr = temp_ptr
+        temp_ptr[].next_ptr[].prev_ptr = new_node
+        temp_ptr[].next_ptr = new_node
+        return True
+
+    fn remove(inout self, value:T) -> Bool:
+        var temp_ptr = self.head
         while temp_ptr:
-            self.destroy_and_free(temp_ptr[].next_ptr)
-            temp_ptr = temp_ptr[].prev_ptr
-        self.destroy_and_free(self.head)
+            if temp_ptr[].data[] == value:
+                temp_ptr[].prev_ptr[].next_ptr = temp_ptr[].next_ptr
+                temp_ptr[].next_ptr[].prev_ptr = temp_ptr[].prev_ptr
+                self.destroy_and_free(temp_ptr)
+                return True
+            temp_ptr = temp_ptr[].next_ptr
+        return False
+    
+    @always_inline
+    fn contains(self, value:T) -> Bool:
+        var idx = self.find(value)
+        if idx>=0:
+            return True
+        return False
+
+    fn find(self, value:T) -> Int:
+        var idx:Int = -1
+        var temp_ptr = self.head
+        while temp_ptr:
+            idx += 1
+            if temp_ptr[].data[] == value:
+                return idx
+            temp_ptr = temp_ptr[].next_ptr
+        return -1
+
+    fn reverse(inout self):
+        if self.head:
+            var temp_ptr = self.head
+            while temp_ptr:
+                swap(temp_ptr[].next_ptr, temp_ptr[].prev_ptr)
+                temp_ptr = temp_ptr[].prev_ptr # going back because of swap
+            swap(self.head, self.tail)
+
+    fn rotate(inout self, owned n:Int16):
+        if n==0 or not self.head: return
+        self.head[].prev_ptr = self.tail
+        self.tail[].next_ptr = self.head
+        n = (abs(n) % int(self.size))*(n/abs(n))
+        var temp_ptr = self.head
+        if n<0:
+            for _ in range(0,abs(n)):
+                temp_ptr = temp_ptr[].next_ptr
+        else:
+            for _ in range(0,abs(n)):
+                temp_ptr = temp_ptr[].prev_ptr
+        self.head = temp_ptr
+        self.tail = self.head[].prev_ptr
+        self.head[].prev_ptr = self.Node_Ptr()
+        self.tail[].next_ptr = self.Node_Ptr()
+
+    fn clear(inout self) :
+        self.__del__()
+        self = Self()
+    
+    fn clear_explicit(inout self) :
+        if self.size==0: return
+        elif self.size == 1:
+            self.destroy_and_free(self.head)
+            self.tail = self.head
+        else:
+            var temp_ptr = self.tail[].prev_ptr
+            while temp_ptr:
+                self.destroy_and_free(temp_ptr[].next_ptr)
+                temp_ptr = temp_ptr[].prev_ptr
+            self.tail = temp_ptr
+            self.destroy_and_free(self.head)
         self.__init__()
 
     fn __str__(self) -> String:
@@ -273,7 +384,6 @@ def test_mixed_operations():
     print(q.__str__())
     assert_true(q.len() == q.size)
     
-    q.print_memory()
     print("Popping: ", 5)
     value = q.popleft()
     assert_true(value == 5)
@@ -281,18 +391,50 @@ def test_mixed_operations():
     print(q.__str__())
     assert_true(q.len() == q.size)
     
-    q.print_memory()
 
     print("Popping: ", 25)
     value = q.popright()
     assert_true(value == 25)
     assert_true(q.len() == 4)
-    print(q.__str__())
+    print(q)
     assert_true(q.len() == q.size)
 
+    q1 = q
+    print("Copy: ", q1)
+
+    q2 = q1^
+    print("Move: ", q2)
+
     q.clear()
-    print(q.__str__())
     assert_true(q.len() == q.size)
+    print("clear q: ", q)
+
+    _ = q2.popright()
+    q.extendleft(q2)
+    print("Extended left: ", q2, q)
+    _ = q2.popleft()
+    q.extendright(q2)
+    print("Extended right: ", q2, q)
+    _ = q2.popright()
+    q.extendleft(q2)
+    print("Extended left: ", q2, q)
+    q.insert(100,3)
+    print("Insert 100 at idx 3: ",q)
+    print("contains 100: ", q.contains(100))
+    print("contains 200: ", q.contains(200))
+    print("Idx of 100: ", q.find(100))
+    print("Idx of 200: ", q.find(200))
+    q.reverse()
+    print("reverse:", q)
+    q.rotate(3)
+    print("rotate 3:", q)
+    q.rotate(-3)
+    print("rotate -3:", q)
+    q.remove(100)
+    print("Remove 100 : ",q)
+    q.clear()
+    q2.clear()
+    print("clear all: ",q2,q)
     print("test_mixed_operations passed.")
 
 def test_empty_pop():
