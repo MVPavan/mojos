@@ -13,7 +13,7 @@ from testing import assert_true
 trait QType(CollectionElement, EqualityComparable, RepresentableCollectionElement):
     pass
 
-alias DEBUG_DELETE = False
+alias DEBUG_DELETE = True
 
 
 struct Node[T:QType]:
@@ -454,10 +454,21 @@ def test_empty_pop():
         assert_true(False)
     print("test_empty_pop passed.")
 
+
+def test_move():
+    q = MyQueue[Int]()
+    q.appendleft(14)
+    q.appendright(16)
+    q.print_memory()
+    q1 = q^
+    q1.print_memory()
+    print(q1)
+
 def main():
     # Run tests
     # test_queue_initialization()
     # test_appendleft_and_popleft()
     # test_appendright_and_popright()
-    test_mixed_operations()
+    # test_mixed_operations()
     # test_empty_pop()
+    test_move()
