@@ -6,12 +6,13 @@ from memory.unsafe_pointer import (
     initialize_pointee_move,
     destroy_pointee
 )
-from my_linked_list import MyLinkedList
+from mytype import MyType
 from testing import assert_true
 
 
-trait QType(CollectionElement, EqualityComparable, RepresentableCollectionElement):
-    pass
+# trait QType(CollectionElement, EqualityComparable, RepresentableCollectionElement):
+#     pass
+alias QType = MyType
 
 alias DEBUG_DELETE = True
 
@@ -61,7 +62,7 @@ struct Node[T:QType]:
         return repr(self.data[])
 
 
-struct MyQueueLL[T:QType]:
+struct MyQueueLL[T:QType](CollectionElement, Boolable):
     alias Node_Ptr = UnsafePointer[Node[T]]
     var head:Self.Node_Ptr
     var tail:Self.Node_Ptr
@@ -115,6 +116,7 @@ struct MyQueueLL[T:QType]:
             temp_ptr = temp_ptr[].next_ptr
         return _len
     
+    @always_inline
     fn is_empty(self) -> Bool:
         return self.size==0
     
@@ -299,6 +301,9 @@ struct MyQueueLL[T:QType]:
             temp_ptr = temp_ptr[].next_ptr
         result += "]"
         return result
+    
+    fn __bool__(self) -> Bool:
+        return not self.size==0
 
 alias MyQueue = MyQueueLL
 
