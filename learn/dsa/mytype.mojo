@@ -1,3 +1,3 @@
 
-trait MyType(CollectionElement, EqualityComparable, RepresentableCollectionElement, AnyType):
+trait MyType(CollectionElement, EqualityComparable, RepresentableCollectionElement, ComparableCollectionElement):
     pass

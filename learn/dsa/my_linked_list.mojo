@@ -6,7 +6,6 @@ from memory.unsafe_pointer import (
     initialize_pointee_move,
     destroy_pointee
 )
-from my_linked_list import MyLinkedList
 from testing import assert_true
 
 
