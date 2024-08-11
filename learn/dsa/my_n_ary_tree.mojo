@@ -1,4 +1,4 @@
-from collections import List, Dict
+from collections import List
 from memory.unsafe_pointer import (
     UnsafePointer,
     move_pointee,
@@ -7,7 +7,6 @@ from memory.unsafe_pointer import (
     initialize_pointee_move,
     destroy_pointee
 )
-from my_queue import MyQueue
 from mytype import MyType
 from testing import assert_true
 
@@ -15,7 +14,7 @@ alias NTreeType = MyType
 
 alias DEBUG_DELETE = True
 
-struct Node[T:NTreeType]:
+struct TNode[T:NTreeType]:
     var data:UnsafePointer[T]
     var children:List[UnsafePointer[Self]]
 
@@ -51,7 +50,7 @@ struct Node[T:NTreeType]:
         self.children = List[UnsafePointer[Self]]()
         self.data = UnsafePointer[T]()
         if DEBUG_DELETE:
-            print("Nulling Node ptrs: ",self.data)
+            print("Nulling TNode ptrs: ",self.data)
             for child_ptr in self.children:
                 print(child_ptr[])
     
@@ -60,17 +59,15 @@ struct Node[T:NTreeType]:
 
 
 struct MyNTree[T:NTreeType]:
-    alias Node_Ptr = UnsafePointer[Node[T]]
+    alias Node_Ptr = UnsafePointer[TNode[T]]
     alias SizeType = UInt16
-    alias Node_List = List[Node[T]]
-    alias Node_Dict = Dict[Int, Self.Node_List]
     var root:Self.Node_Ptr
     # var size:UInt16
     
     fn __init__(inout self, value:T):
         self.root = self.Node_Ptr()
         self.root = self.root.alloc(1)
-        initialize_pointee_move(self.root, Node[T](value))
+        initialize_pointee_move(self.root, TNode[T](value))
 
     fn find(self, node_ptr:Self.Node_Ptr, value:T) -> Self.Node_Ptr:
         if not node_ptr: return Self.Node_Ptr()
@@ -96,7 +93,7 @@ struct MyNTree[T:NTreeType]:
         var parent_node = self.find(self.root, parent_data)
         if parent_node:
             var temp_node = self.Node_Ptr.alloc(1)
-            initialize_pointee_move(temp_node, Node[T](child_data))
+            initialize_pointee_move(temp_node, TNode[T](child_data))
             parent_node[].children.append(temp_node)
         else:
             print("Parent data not found: ", repr(parent_data))
@@ -126,23 +123,37 @@ struct MyNTree[T:NTreeType]:
         nodes_list.append(node_ptr[].data[])
         return nodes_list
     
-    # TODO: see if q can take Node[T] type
-    fn _level_order_traversal(self, node_ptr:Self.Node_Ptr, inout node_dict:Self.Node_Dict, level:Int)->List[T]:
+    fn level_order_traversal(self, node_ptr:Self.Node_Ptr, reverse:Bool=False)->List[T]:
         var nodes_list = List[T]()
         if not node_ptr: return nodes_list
-        var _q = MyQueue[Node[T]]
-        node_dict[level] += 
-        for child in node_ptr[].children:
-            nodes_list += self.post_order_traversal(child[])  
-        
+        var _q = List[Int]()
+        var temp_ptr:Self.Node_Ptr
+        _q.append(int(node_ptr))
+        while _q:
+            temp_ptr = self.Node_Ptr(address = _q.pop(0))
+            nodes_list.append(temp_ptr[].data[])
+            for child in temp_ptr[].children:
+                _q.append(int(child[]))
+        if reverse:
+            nodes_list.reverse()
         return nodes_list
     
-    fn level_order_traversal(self, node_ptr:Self.Node_Ptr)->List[T]:
+    fn reverse_level_order_traversal(self, node_ptr:Self.Node_Ptr)->List[T]:
         var nodes_list = List[T]()
         if not node_ptr: return nodes_list
-        var node_dict = Dict[Int, List[Node[T]]]()
-        var temp_ptr = node_ptr    
-        
+        var _q = List[Int]()
+        var _stack = List[Int]()
+        var temp_ptr:Self.Node_Ptr
+        var addr:Int
+        _q.append(int(node_ptr))
+        while _q:
+            addr = _q.pop(0)
+            _stack.append(addr)
+            temp_ptr = self.Node_Ptr(address = addr)
+            for child in temp_ptr[].children:
+                _q.append(int(child[]))
+        while _stack:
+            nodes_list.append(self.Node_Ptr(address = _stack.pop(-1))[].data[])
         return nodes_list
         
     fn print_tree(self, node_ptr:Self.Node_Ptr, owned prefix:String='', is_last:Bool=True):
@@ -175,12 +186,12 @@ fn test_find_existing_node() raises:
     var tree = MyNTree[Int](value=1)
     tree.add_child_using_data(parent_data=1, child_data=2)
     var found_node = tree.find(tree.root, 2)
-    assert_true(found_node[].data[] == 2, "Node with value 2 should be found")
+    assert_true(found_node[].data[] == 2, "TNode with value 2 should be found")
 
 fn test_find_non_existing_node() raises:
     var tree = MyNTree[Int](value=1)
     var found_node = tree.find(tree.root, 99)
-    assert_true(found_node == MyNTree[Int].Node_Ptr(), "Node with value 99 should not be found")
+    assert_true(found_node == MyNTree[Int].Node_Ptr(), "TNode with value 99 should not be found")
 
 fn test_print_tree():
     var tree = MyNTree[Int](value=1)
@@ -205,6 +216,14 @@ fn test_print_tree():
     print(tree.pre_order_traversal(tree.root).__str__())
     print("Post order traversal: ")
     print(tree.post_order_traversal(tree.root).__str__())
+    print("Level order traversal: ")
+    print(tree.level_order_traversal(tree.root).__str__())
+    print("Reverse Level order traversal: ")
+    print(tree.level_order_traversal(tree.root, reverse=True).__str__())
+    print("Reverse Level order traversal: ")
+    print(tree.reverse_level_order_traversal(tree.root).__str__())
+    # print("Total nodes: ",tree.total_nodes(tree.root))
+    # tree.print_tree(tree.root)
     # Expected Output:
     # └── 1
     #     ├── 2
