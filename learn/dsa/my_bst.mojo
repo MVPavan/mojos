@@ -7,9 +7,11 @@ from memory.unsafe_pointer import (
     initialize_pointee_move,
     destroy_pointee
 )
-from mytype import MyType
+# from mytype import MyType
 from testing import assert_true
 
+trait MyType(CollectionElement, EqualityComparable, RepresentableCollectionElement, ComparableCollectionElement):
+    pass
 alias NTreeType = MyType
 
 alias DEBUG_DELETE = True
@@ -38,8 +40,8 @@ struct BSTNode[T:NTreeType]:
         self = Self()
         self.data = self.data.alloc(1)
         move_pointee(src=existing.data, dst=self.data)
-        move_pointee(src=existing.right, dst=self.right)
-        move_pointee(src=existing.left, dst=self.left)
+        self.right = existing.right
+        self.left = existing.left
     
 
     @always_inline
@@ -53,12 +55,12 @@ struct BSTNode[T:NTreeType]:
         self.left = UnsafePointer[Self]()
         self.data = UnsafePointer[T]()
         if DEBUG_DELETE:
-            print("Nulling BSTNode ptrs: ",self.data)
-            print(self.right[])
-            print(self.left[])
+            print("Nulling BSTNode ptrs: ",self.left, self.data, self.right)
     
-    fn __str__(self) -> String:
-        return repr(self.data[])
+    fn __str__(self) -> Optional[String]:
+        if self.data:
+            return repr(self.data[])
+        return
 
 
 struct MyBSTree[T:NTreeType]:
@@ -97,33 +99,43 @@ struct MyBSTree[T:NTreeType]:
         var temp_ptr = self.root
         var _data:T
         while temp_ptr:
-            if not temp_ptr:                
-                temp_ptr = temp_ptr.alloc(1)
-                initialize_pointee_move(temp_ptr, BSTNode[T](value))
-                return True
             _data = temp_ptr[].data[]
             if value<_data:
-                temp_ptr = temp_ptr[].left
+                if temp_ptr[].left:
+                    temp_ptr = temp_ptr[].left
+                else:
+                    temp_ptr[].left = temp_ptr[].left.alloc(1)
+                    initialize_pointee_move(temp_ptr[].left, BSTNode[T](value))
+                    return True
+
             elif value>_data:
-                temp_ptr = temp_ptr[].right
+                if temp_ptr[].left:
+                    temp_ptr = temp_ptr[].right
+                else:
+                    temp_ptr[].right = temp_ptr[].right.alloc(1)
+                    initialize_pointee_move(temp_ptr[].right, BSTNode[T](value))
+                    return True
             else:
                 print("Element already exists!")
                 return False
-        return True
-
-                
+        return True        
     
-    fn total_nodes(self, node_ptr:Self.Node_Ptr) -> Self.SizeType:
+    fn total_nodes(self, node_ptr:Self.Node_Ptr) -> Int:
         if node_ptr:
-            var counter:self.SizeType = 1
+            var counter:Int = 1
             if node_ptr[].left:
-                counter += self.total_nodes(node_ptr[].left)
+                print(node_ptr[].left)
+                print(self.total_nodes(node_ptr[].left))
+                # counter = counter + self.total_nodes(node_ptr[].left)
             if node_ptr[].right:
-                counter += self.total_nodes(node_ptr[].right)
+                print(node_ptr[].right)
+            #     counter += self.total_nodes(node_ptr[].right)
+            print("internal: ",counter)
             return counter
         else:
             return 0
     
+
     # fn pre_order_traversal(self, node_ptr:Self.Node_Ptr)->List[T]:
     #     var nodes_list = List[T]()
     #     if not node_ptr: return nodes_list
@@ -190,26 +202,31 @@ struct MyBSTree[T:NTreeType]:
                 self.print_tree(node_ptr[].right, prefix, True)
 
 # Define the test cases
-# fn test_initialization() raises:
-#     var tree = MyBSTree[Int](value=1)
-#     assert_true(tree.root[].data[] == 1, "Root node should be initialized with value 1")
+fn test_initialization() raises:
+    var tree = MyBSTree[Int](value=1)
+    assert_true(tree.root[].data[] == 1, "Root node should be initialized with value 1")
 
-# fn test_add_child() raises:
-#     var tree = MyBSTree[Int](value=1)
-#     tree.insert(parent_data=1, child_data=2)
-#     assert_true(len(tree.root[].children) == 1, "Root should have 1 child")
-#     assert_true(tree.root[].children[0][].data[] == 2, "Child node should have value 2")
+fn test_add_child() raises:
+    var tree = MyBSTree[Int](value=1)
+    tree.insert(value=2)
+    tree.insert(value=0)
+    print(tree.root,tree.root[].left, tree.root[].right)
+    # print(tree.total_nodes(tree.root))
+    # print(tree.total_nodes(tree.root[].left))
+    # print(tree.total_nodes(tree.root[].right))
+    # assert_true(tree.total_nodes(tree.root) == 3, "Root should have 3 nodes")
+    assert_true(tree.root[].right[].data[] == 2, "Child node should have value 2")
 
-# fn test_find_existing_node() raises:
-#     var tree = MyBSTree[Int](value=1)
-#     tree.add_child_using_data(parent_data=1, child_data=2)
-#     var found_node = tree.find(tree.root, 2)
-#     assert_true(found_node[].data[] == 2, "BSTNode with value 2 should be found")
+fn test_find_existing_node() raises:
+    var tree = MyBSTree[Int](value=1)
+    tree.insert(value=2)
+    var found_node = tree.find(tree.root, 2)
+    assert_true(found_node[].data[] == 2, "BSTNode with value 2 should be found")
 
-# fn test_find_non_existing_node() raises:
-#     var tree = MyBSTree[Int](value=1)
-#     var found_node = tree.find(tree.root, 99)
-#     assert_true(found_node == MyBSTree[Int].Node_Ptr(), "BSTNode with value 99 should not be found")
+fn test_find_non_existing_node() raises:
+    var tree = MyBSTree[Int](value=1)
+    var found_node = tree.find(tree.root, 99)
+    assert_true(found_node == MyBSTree[Int].Node_Ptr(), "BSTNode with value 99 should not be found")
 
 fn test_print_tree():
     var tree = MyBSTree[Int](value=1)
@@ -228,8 +245,8 @@ fn test_print_tree():
     tree.insert(value=1211)
     tree.insert(value=1212)
 
-    print("Total nodes: ",tree.total_nodes(tree.root))
-    tree.print_tree(tree.root)
+    # print("Total nodes: ",tree.total_nodes(tree.root))
+    # tree.print_tree(tree.root)
     # print("Pre order traversal: ")
     # print(tree.pre_order_traversal(tree.root).__str__())
     # print("Post order traversal: ")
