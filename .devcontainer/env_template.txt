@@ -1,0 +1,11 @@
+IMAGE_NAME=mvp-pt:2.5.1
+CONTAINER_NAME=mvp-pt25
+DOCKERFILE_NAME="pytorch25.Dockerfile"
+COMPOSE_FILE_NAME="compose.pytorch25.yml"
+SERVICE_NAME="llm_pt25_service"
+DEVCONTAINER_NAME="LLM-PT25"
+CODE=/media/data_2/opensource/LLMs-from-scratch
+DATASET=/media
+CONDA=/media/data_2/docker/conda_containers
+NVIDIA_VISIBLE_DEVICES=all
+DISPLAY=$DISPLAY

@@ -1,25 +1,19 @@
-## To build and run the image run:
-## docker compose up -d
-
-version: "3.8"
 services:
-  mojo:
+  mojo_service:
     build:
       context: ./
       dockerfile: Dockerfile.mojosdk
-    image: mojo
-    container_name: ${CONTAINER_NAME}
+    image: mojo:v2
+    container_name: mojov2
     network_mode: host
-    ipc: host
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - type: bind
-        source: ${CODE}
-        target: ${CODE}
+        source: /data/nvidia_local/opensource/mojos
+        target: /data/nvidia_local/opensource/mojos
       - type: bind
-        source: ${CONDA}
-        target: ${CONDA}
-
+        source: /data
+        target: /data
     ulimits:
       memlock:
         soft: -1
@@ -29,9 +23,14 @@ services:
         hard: 67108864
     security_opt:
       - apparmor:unconfined
+    ipc: host
     
     stdin_open: true 
     tty: true
+
+    # Uncomment if below doesnt work
+    # runtime: nvidia
+    # default choice
     deploy:
       resources:
         reservations:
@@ -39,4 +38,3 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu]
-

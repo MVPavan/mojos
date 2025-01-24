@@ -1,7 +1,7 @@
 {
-    "name": "Mojos",
+    "name": "mojov2",
     "dockerComposeFile": "compose.mojo.yml",
-    "service": "mojo",
+    "service": "mojo_service",
     "workspaceFolder": "/data/nvidia_local/opensource/mojos",
     "customizations": {
         "vscode": {
@@ -11,19 +11,19 @@
             "extensions": [
                 "sugatoray.vscode-git-extension-pack",
                 "franneck94.vscode-python-dev-extension-pack",
-                "franneck94.vscode-c-cpp-dev-extension-pack",
                 "franneck94.vscode-coding-tools-extension-pack",
                 "gruntfuggly.todo-tree",
-                "vscode-icons-team.vscode-icons",
                 "streetsidesoftware.code-spell-checker",
                 "oderwat.indent-rainbow",
                 "mechatroner.rainbow-csv",
                 "moshfeu.compare-folders",
                 "mikestead.dotenv",
-                "modular-mojotools.vscode-mojo"
+                "ms-toolsai.jupyter",
+                "yahyabatulu.vscode-markdown-alert",
+                "tomoki1207.pdf"
             ]
         }
     },
-	"remoteUser": "root",
+    "remoteUser": "root",
     "shutdownAction": "none"
 }
