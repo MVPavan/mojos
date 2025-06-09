@@ -1,19 +1,32 @@
 services:
-  mojo_service:
+  modular_service:
     build:
       context: ./
-      dockerfile: Dockerfile.mojosdk
-    image: mojo:v2
-    container_name: mojov2
+      dockerfile: modular.Dockerfile
+    image: modular-nvidia:nightly
+    container_name: modular
     network_mode: host
+    environment:
+      - HF_HOME=/data/hf_home
+      - UV_CACHE_DIR
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - type: bind
-        source: /data/nvidia_local/opensource/mojos
-        target: /data/nvidia_local/opensource/mojos
+        source: /data/pavan/opensource/mojos
+        target: /data/pavan/opensource/mojos
       - type: bind
         source: /data
         target: /data
+      - type: bind
+        source: /data/docker/conda_containers
+        target: /data/docker/conda_containers
+      - type: bind
+        source: /data/hf_home
+        target: /data/hf_home
+      - type: bind
+        source: /data/docker/uv_containers
+        target: /data/docker/uv_containers
+      
     ulimits:
       memlock:
         soft: -1

@@ -1,8 +1,8 @@
 {
-    "name": "mojov2",
-    "dockerComposeFile": "compose.mojo.yml",
-    "service": "mojo_service",
-    "workspaceFolder": "/data/nvidia_local/opensource/mojos",
+    "name": "modular",
+    "dockerComposeFile": "compose.modular.yml",
+    "service": "modular_service",
+    "workspaceFolder": "/data/pavan/opensource/mojos",
     "customizations": {
         "vscode": {
             "settings": {
@@ -25,5 +25,6 @@
         }
     },
     "remoteUser": "root",
-    "shutdownAction": "none"
+    "shutdownAction": "none",
+    "postCreateCommand": "/bin/bash .devcontainer/dev_entrypoint.sh"
 }
