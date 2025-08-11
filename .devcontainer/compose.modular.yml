@@ -3,8 +3,8 @@ services:
     build:
       context: ./
       dockerfile: modular.Dockerfile
-    image: modular-nvidia:nightly
-    container_name: modular
+    image: cuda:12.8
+    container_name: cuda128
     network_mode: host
     environment:
       - HF_HOME=/data/hf_home

@@ -6,4 +6,7 @@
 *.npy
 **/output
 *.pyc
-**/temp
+**/temp# pixi environments
+.pixi/*
+!.pixi/config.toml
+kgen*
