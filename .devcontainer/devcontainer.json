@@ -2,7 +2,7 @@
     "name": "modular",
     "dockerComposeFile": "compose.modular.yml",
     "service": "modular_service",
-    "workspaceFolder": "/data/pavan/opensource/mojos",
+    "workspaceFolder": "/media/data_2/opensource/mojos",
     "customizations": {
         "vscode": {
             "settings": {
