@@ -1,3 +1,5 @@
+# Docker containers not working for modular with GPU
+
 # FROM modular/max-nvidia-full:nightly as mod
 FROM nvcr.io/nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04 as mod
 
