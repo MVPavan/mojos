@@ -7,25 +7,25 @@ services:
     container_name: cuda128
     network_mode: host
     environment:
-      - HF_HOME=/data/hf_home
+      - HF_HOME=/media/data_2/hf_home
       - UV_CACHE_DIR
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - type: bind
-        source: /data/pavan/opensource/mojos
-        target: /data/pavan/opensource/mojos
+        source: /media/data_2/opensource/mojos
+        target: /media/data_2/opensource/mojos
       - type: bind
-        source: /data
-        target: /data
+        source: /media/data_2
+        target: /media/data_2
       - type: bind
-        source: /data/docker/conda_containers
-        target: /data/docker/conda_containers
+        source: /media/data_2/docker/conda_containers
+        target: /media/data_2/docker/conda_containers
       - type: bind
-        source: /data/hf_home
-        target: /data/hf_home
+        source: /media/data_2/hf_home
+        target: /media/data_2/hf_home
       - type: bind
-        source: /data/docker/uv_containers
-        target: /data/docker/uv_containers
+        source: /media/data_2/docker/uv_containers
+        target: /media/data_2/docker/uv_containers
       
     ulimits:
       memlock:

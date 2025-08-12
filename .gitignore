@@ -9,4 +9,5 @@
 **/temp# pixi environments
 .pixi/*
 !.pixi/config.toml
+**/temp
 kgen*
