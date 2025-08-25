@@ -1,4 +1,3 @@
-# trivial
 from gpu import thread_idx, block_idx, block_dim, barrier
 from gpu.host import DeviceContext
 from layout import Layout, LayoutTensor
