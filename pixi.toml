@@ -1,0 +1,11 @@
+[workspace]
+authors = ["MVPavan <mvpavan42@gmail.com>"]
+channels = ["https://conda.modular.com/max-nightly", "conda-forge"]
+name = "mojos"
+platforms = ["linux-64"]
+version = "0.1.0"
+
+[tasks]
+
+[dependencies]
+mojo = ">=0.26.1.0.dev2025122805,<0.27"
