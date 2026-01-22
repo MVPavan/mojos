@@ -11,5 +11,4 @@
 !.pixi/config.toml
 **/temp
 kgen*
-**/agent_playground/*
 **/scratchpad/*

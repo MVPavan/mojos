@@ -7,6 +7,8 @@ trigger: always_on
 ## Execution Environment
 - **Pixi required**: Always use `pixi run mojo path/to/file.mojo`
 - **Scratchpad**: Experimental code goes in `./scratchpad/`
+- **Learnings**: If any file is being created as part of learning or explaining in user codebase that file goes in `./learnings/`. This need not include agent artifacts for its own planning or execution.
+- **Markdown**: If use asks to create any markdown, makes sure its Obsidian compatible.
 
 ## Naming Conventions
 | Element | Style | Example |
