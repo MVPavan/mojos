@@ -7,7 +7,7 @@ fn demo_implicit_capture():
     # By default, they capture by immutable reference (borrow).
     fn reader():
         print("  Inside reader: x =", x, ", y =", y)
-        # x += 1  # ERROR: Cannot assign to captured variable (implicit capture is read-only)
+        x += 1  # ERROR: Cannot assign to captured variable (implicit capture is read-only)
 
     reader()
     print("  Outside reader: x =", x, " (unchanged)")
@@ -46,5 +46,5 @@ fn demo_copy_capture():
 
 fn main():
     demo_implicit_capture()
-    demo_mutable_capture()
-    demo_copy_capture()
+    # demo_mutable_capture()
+    # demo_copy_capture()
