@@ -11,4 +11,4 @@
 !.pixi/config.toml
 **/temp
 kgen*
-**/scratchpad/*
+**/scratchpad
